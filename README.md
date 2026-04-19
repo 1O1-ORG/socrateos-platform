@@ -182,6 +182,23 @@ The platform is **model-agnostic**. Point it at OpenAI, Anthropic, Google, Mistr
 
 <br/>
 
+## Cognitive Principles
+
+SocrateOS is built on a set of publicly documented principles that define _why_ the system works the way it does:
+
+1. **The Question Is the Product** — the output is a sharper version of the problem, not a solution
+2. **Structured Dialectic** — multi-step conversational protocols that move through clarification, assumptions, tension, trade-offs, and synthesis
+3. **Cognition as Trajectory** — identity unfolds over time; single conversations are snapshots, the system tracks the arc
+4. **The Epistemological Stance** — every claim is classified as FACT, INFERENCE, or SPECULATION before delivery
+5. **Personas as Cognitive Lenses** — each persona has exactly one function, one verb, one angle of inquiry
+6. **Actor Agency** — the system holds tension; the Actor decides
+
+The principles are open. The implementation is proprietary. The platform connects them.
+
+→ [Full Cognitive Principles](docs/cognitive-principles.md)
+
+<br/>
+
 ## Contributing
 
 We welcome contributions across four areas:
