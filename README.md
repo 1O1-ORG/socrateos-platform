@@ -26,11 +26,70 @@
 
 <br/>
 
+## See the Difference
+
+Before you install anything, see what the system actually does.
+
+**Input:**
+> *"Is it better to prioritize extreme transparency with users if it might cause temporary panic?"*
+
+**What SocrateOS returns:**
+
+| Step | What happens |
+|:---|:---|
+| **Clarify** | *Under what specific circumstances, and for which types of information, is prioritizing extreme transparency — even when it risks causing temporary panic — a more beneficial strategy than phased disclosure, considering the long-term impact on user trust and organizational reputation?* |
+| **Thesis** | Immediate, unvarnished disclosure respects users as capable agents. The long-term trust benefit of unwavering honesty far surpasses the short-term discomfort of complete transparency. |
+| **Antithesis** | The thesis dismisses the paternalistic argument too readily. In certain high-stakes situations, unvarnished disclosure could trigger widespread, unmanageable chaos. Phased disclosure is not deception — it's responsible crisis management. |
+| **Synthesis** | The goal should be to provide information as promptly as possible, while simultaneously implementing mitigation strategies. The key: any phasing must be transparent in its purpose, and full truth revealed as soon as safely feasible. |
+| **Open Tensions** | *Where is the threshold between "temporary panic" and "unmanageable chaos"? How long can information be phased without appearing manipulative? What objective criteria determine when immediate disclosure is truly safe?* |
+
+The system didn't answer the question. It transformed it. The Actor entered with a binary ("should I be transparent?") and left with a structured map of the real tensions underneath.
+
+That's the product.
+
+<br/>
+
+## Fastest Demo — 90 Seconds
+
+### Pre-flight
+
+Before you start, make sure you have:
+- [ ] **Docker Desktop** installed and running
+- [ ] An **OpenAI** or **OpenRouter** API key
+- [ ] **20 minutes** (if something goes wrong, stop and [open an issue](https://github.com/1O1-ORG/socrateos-platform/issues))
+
+### Launch
+
+```bash
+git clone https://github.com/1O1-ORG/socrateos-platform.git
+cd socrateos-platform
+cp .env.example .env       # Add your API key here
+docker compose up -d
+```
+
+Open **http://localhost:3000**
+
+Paste this prompt:
+
+> *"I want to launch a new service, but I'm afraid it will fail."*
+
+Watch the system think. Step by step. That's the dialectic.
+
+<br/>
+
 ## What is SocrateOS Platform?
 
 A production-grade framework for building **structured AI dialogue systems** with persistent memory. Instead of single-turn Q&A, SocrateOS enables multi-step conversations that systematically explore assumptions, surface tensions, and force clarity before resolution.
 
 **Think of it as Rails for cognitive AI.** Define a persona in YAML. Configure a dialogue flow. Deploy a system where the AI holds tension instead of resolving it prematurely.
+
+### Who This Is For
+
+| You are a... | You can... | Start here |
+|:---|:---|:---:|
+| **Developer** | Deploy a working dialectic system, build custom personas, extend via plugins | [Fastest Demo](#fastest-demo--90-seconds) |
+| **Contributor** | Design personas, propose dialogue structures, improve the engine | [Contributing](#contributing) |
+| **Researcher** | Study the cognitive principles, analyze the dialogue architecture | [Cognitive Principles](#cognitive-principles) |
 
 <br/>
 
@@ -87,27 +146,6 @@ PostgreSQL 18 with pgvector extension. Idempotent migrations, parameterized quer
 
 <br/>
 
-## Quick Start
-
-```bash
-# Clone
-git clone https://github.com/1O1-ORG/socrateos-platform.git
-cd socrateos-platform
-
-# Configure
-cp .env.example .env
-# Add your LLM API key (OpenRouter, OpenAI, or Anthropic)
-
-# Launch
-docker compose up -d
-
-# Open http://localhost:3000
-```
-
-Define a persona, point it at any LLM, and you have a working dialectic system in minutes.
-
-<br/>
-
 ## Create a Persona in 60 Seconds
 
 Every dialogue in SocrateOS is driven by a **Persona** — a structured definition that controls voice, reasoning, and behavioral constraints.
@@ -142,6 +180,68 @@ dialogue:
 Drop this into `personas/`, restart, and your new persona is live.
 
 → [Full Persona Specification](docs/persona-spec.md)
+
+<br/>
+
+## Extend with Plugins
+
+Plugins hook into the dialogue lifecycle at four points. Here's a concrete example — a plugin that logs cognitive bias patterns detected during synthesis:
+
+```python
+from socrateos.plugins import Plugin
+
+class BiasDetector(Plugin):
+    name = "bias_detector"
+    version = "0.1.0"
+
+    def post_step(self, context, response):
+        """Runs after each dialogue step. Analyze the output."""
+        if context.step_name != "Synthesis":
+            return response
+
+        # Check for common cognitive bias indicators
+        bias_signals = {
+            "sunk_cost": ["already invested", "come this far", "can't stop now"],
+            "confirmation": ["proves that", "as I expected", "confirms my"],
+            "anchoring": ["the first option", "originally thought", "started with"],
+        }
+
+        detected = []
+        text = response.content.lower()
+        for bias, indicators in bias_signals.items():
+            if any(phrase in text for phrase in indicators):
+                detected.append(bias)
+
+        if detected:
+            response.metadata["detected_biases"] = detected
+
+        return response
+
+    def on_complete(self, session):
+        """Runs when the dialogue session finishes."""
+        biases = []
+        for step in session.steps:
+            biases.extend(step.metadata.get("detected_biases", []))
+
+        if biases:
+            session.artifacts.append({
+                "type": "bias_report",
+                "data": {"biases": biases, "count": len(biases)},
+            })
+```
+
+Register it in `plugins.yaml`:
+
+```yaml
+plugins:
+  - name: bias_detector
+    module: plugins.bias_detector
+    enabled: true
+```
+
+The plugin runs automatically. No core code modified. The bias report appears in the session artifacts.
+
+→ [Full Plugin API Documentation](docs/plugin-api.md)
 
 <br/>
 
@@ -184,14 +284,18 @@ The platform is **model-agnostic**. Point it at OpenAI, Anthropic, Google, Mistr
 
 ## Cognitive Principles
 
-SocrateOS is built on a set of publicly documented principles that define _why_ the system works the way it does:
+SocrateOS is built on six publicly documented principles. These are not aspirational values — they are **constraints the system enforces**.
 
-1. **The Question Is the Product** — the output is a sharper version of the problem, not a solution
-2. **Structured Dialectic** — multi-step conversational protocols that move through clarification, assumptions, tension, trade-offs, and synthesis
-3. **Cognition as Trajectory** — identity unfolds over time; single conversations are snapshots, the system tracks the arc
-4. **The Epistemological Stance** — every claim is classified as FACT, INFERENCE, or SPECULATION before delivery
-5. **Personas as Cognitive Lenses** — each persona has exactly one function, one verb, one angle of inquiry
-6. **Actor Agency** — the system holds tension; the Actor decides
+| # | Principle | What it prevents | What it forces |
+|:---:|:---|:---|:---|
+| 1 | **The Question Is the Product** | Answer-optimization | System returns sharpened problems, not solutions |
+| 2 | **Structured Dialectic** | Free-form conversational drift | Actor moves through layers of reasoning in sequence |
+| 3 | **Cognition as Trajectory** | Treating each session as isolated | System tracks patterns, contradictions, and evolution over time |
+| 4 | **The Epistemological Stance** | Certainty theater | Every claim classified as FACT, INFERENCE, or SPECULATION |
+| 5 | **Personas as Cognitive Lenses** | Generic, overlapping advice | Each persona has exactly one function, one verb |
+| 6 | **Actor Agency** | System deciding for the Actor | System holds tension; the Actor decides |
+
+If a principle can't answer "what does this prevent?" and "what does this force?" — it doesn't belong here.
 
 The principles are open. The implementation is proprietary. The platform connects them.
 
@@ -233,6 +337,18 @@ Every contribution is attributed. We maintain two forms of credit:
 | 🔜 | Dialogue Structure Templates |
 | 🔜 | Model-agnostic adapter layer |
 | 🔜 | SDK for third-party integrations |
+
+<br/>
+
+## Support the Project
+
+SocrateOS is open-source and free to use. If the system creates value for you, consider supporting its development:
+
+<p align="center">
+  <a href="https://1o1.org/donate"><img src="https://img.shields.io/badge/Support-1o1.org-c4a35a?style=for-the-badge" alt="Support 1o1.org" /></a>
+</p>
+
+Contributions sustain the infrastructure, fund ongoing development, and keep the platform free for everyone. Every supporter is acknowledged.
 
 <br/>
 
