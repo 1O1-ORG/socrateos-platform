@@ -49,7 +49,11 @@ That's the product.
 
 <br/>
 
-## Fastest Demo — 90 Seconds
+## The Mars Test: Fastest Demo — 90 Seconds
+
+Can a competent data scientist spool up an instance in minutes? Yes. Here is the proof:
+
+*(Screen capture of 90-second setup goes here — coming soon)*
 
 ### Pre-flight
 
@@ -87,7 +91,7 @@ A production-grade framework for building **structured AI dialogue systems** wit
 
 | You are a... | You can... | Start here |
 |:---|:---|:---:|
-| **Developer** | Deploy a working dialectic system, build custom personas, extend via plugins | [Fastest Demo](#fastest-demo--90-seconds) |
+| **Developer** | Deploy a working dialectic system, build custom personas, extend via plugins | [Fastest Demo](#the-mars-test-fastest-demo--90-seconds) |
 | **Contributor** | Design personas, propose dialogue structures, improve the engine | [Contributing](#contributing) |
 | **Researcher** | Study the cognitive principles, analyze the dialogue architecture | [Cognitive Principles](#cognitive-principles) |
 
@@ -342,13 +346,10 @@ Every contribution is attributed. We maintain two forms of credit:
 
 ## Support the Project
 
-SocrateOS is open-source and free to use. If the system creates value for you, consider supporting its development:
+The core dialectic engine remains open and free. If you believe in building AI that maps the human mind through structured reflection, consider supporting our infrastructure:
 
-<p align="center">
-  <a href="https://1o1.org/donate"><img src="https://img.shields.io/badge/Support-1o1.org-c4a35a?style=for-the-badge" alt="Support 1o1.org" /></a>
-</p>
-
-Contributions sustain the infrastructure, fund ongoing development, and keep the platform free for everyone. Every supporter is acknowledged.
+- 💸 **[Fund the Project via Stripe](https://1o1.org/donate)**
+- 📊 **[View the Pitch Deck](https://1o1.org/presentation)**
 
 <br/>
 
