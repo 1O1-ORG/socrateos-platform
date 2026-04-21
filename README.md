@@ -349,7 +349,7 @@ Every contribution is attributed. We maintain two forms of credit:
 The core dialectic engine remains open and free. If you believe in building AI that maps the human mind through structured reflection, consider supporting our infrastructure:
 
 - 💸 **[Fund the Project via Stripe](https://1o1.org/donate)**
-- 📊 **[View the Pitch Deck](https://1o1.org/presentation)**
+- 📊 **[View the Pitch Deck](https://1o1.org/socrates)**
 
 <br/>
 
