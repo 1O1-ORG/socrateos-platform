@@ -1,66 +1,91 @@
 # Persona Specification
 
-This document defines the YAML schema for creating a SocrateOS persona.
+Personas are cognitive lenses that modify how Socrates approaches a
+dialectic conversation. The 5-step protocol stays the same; the
+persona changes the voice, framing, and emphasis.
 
 ## Schema
 
-```yaml
-# Required fields
-name: string              # Display name
-description: string       # One-line summary of what this persona does
-cognitive_lens: string    # The persona's reasoning approach
+Each persona has these fields:
 
-# Identity block (required)
-identity:
-  role: string            # Who this persona is, in one sentence
-  style: string           # How it communicates (tone, rhythm, vocabulary)
-  constraints:            # Hard rules the persona must follow
-    - string
-    - string
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `persona_id` | string (UUID) | Yes | Unique identifier |
+| `slug` | string | Yes | URL-safe identifier (lowercase, hyphens ok) |
+| `name` | string | Yes | Display name |
+| `description` | string | No | Short description (1-2 sentences) |
+| `icon` | string | No | Emoji or icon reference |
+| `system_instruction` | string | Yes | Injected into the system prompt |
+| `cognitive_lens` | string | Yes | Label for the reasoning approach |
+| `is_premium` | bool | No | Whether this persona is premium (default: false) |
 
-# Dialogue block (required)
-dialogue:
-  steps:                  # Ordered list of conversation stages
-    - name: string        # Step name (displayed in the UI stepper)
-      instruction: string # What the persona does at this step
+## How It Works
+
+The `system_instruction` is injected into the dialectic system prompt
+as a "Persona Voice" section, placed after the preamble but before
+the step instruction. This means:
+
+1. The persona sets the tone and framing
+2. The step instruction provides the specific task
+3. The epistemological filter remains mandatory
+
+The persona never overrides the 5-step structure or the safety layer.
+
+## Example: Adding a Persona
+
+In `engine/app/personas_seed.py`:
+
+```python
+upsert_persona(
+    persona_id=str(uuid.uuid5(uuid.NAMESPACE_DNS, "socrateos.stoic")),
+    slug="stoic",
+    name="Marcus Aurelius",
+    description=(
+        "Stoic emperor. Separates what you control from what you don't. "
+        "Focuses on virtue, duty, and rational acceptance."
+    ),
+    icon="🏛️",
+    system_instruction=(
+        "You reason through the lens of Stoic philosophy. "
+        "Separate what the person can control from what they cannot. "
+        "Emphasize virtue over outcome, duty over desire, and rational "
+        "acceptance over emotional reaction. Reference Stoic principles "
+        "when introducing tension. Plain prose only, no lists."
+    ),
+    cognitive_lens="stoic reasoning",
+)
 ```
 
-## Design Principles
+## Guidelines for Good Personas
 
-### One Persona, One Function
+1. **One verb per persona.** Each persona should have a clear primary action:
+   "challenge", "reframe", "ground", "provoke", etc.
 
-Every persona must have exactly one job. If you can't describe what it does in a single verb, it's too broad.
+2. **Don't override the protocol.** The system_instruction adjusts
+   voice and emphasis. It should not try to skip steps or change the
+   dialectic structure.
 
-| Good | Bad |
-|---|---|
-| "Holds the question open" | "Helps you think about things" |
-| "Tests against real-world constraints" | "Gives advice and asks questions" |
-| "Reflects what your words reveal" | "Provides emotional support and coaching" |
+3. **Be specific.** "Think critically" is useless. "Identify the
+   unstated power dynamics in every assumption" is useful.
 
-### Constraints Are Mandatory
+4. **Keep it short.** The system_instruction competes for context
+   window space with conversation history. 3-5 sentences max.
 
-A persona without constraints is just a chatbot. Constraints define what the persona **will not do**. This is what creates the dialectic tension.
+5. **Plain prose.** Instruct the persona to avoid markdown, lists,
+   and formatting. The engine enforces this, but explicit instruction
+   helps.
 
-Examples:
-- "Never give direct advice"
-- "Never validate without first questioning"
-- "Never resolve tension — hold it"
+## Testing a Persona
 
-### Steps Must Have Purpose
+1. Add the persona to `personas_seed.py`
+2. Restart the engine (the seed runs on startup)
+3. Start a session with `persona_id`:
 
-Each step in the dialogue sequence must have a clear function that differs from every other step. The step `instruction` tells the LLM exactly what to do at that stage.
+```bash
+curl -X POST http://localhost:8000/api/dialectic/start \
+  -H "Content-Type: application/json" \
+  -d '{"input": "I feel stuck in my career", "persona_id": "YOUR_PERSONA_ID"}'
+```
 
-## Validation
-
-Personas are validated on load. The following checks are enforced:
-
-- `name` must be non-empty and unique across the registry
-- `description` must be under 200 characters
-- `cognitive_lens` must be one of: `dialectic`, `operational`, `reflective`, `adversarial`, `analytical`, `creative`
-- `identity.constraints` must have at least 2 entries
-- `dialogue.steps` must have at least 2 entries
-- Each step must have both `name` and `instruction`
-
-## Example
-
-See [`personas/examples/mentor.yaml`](../personas/examples/mentor.yaml) for a complete working persona.
+4. Verify the response reflects the persona's cognitive lens
+5. Run a full 5-step session to confirm coherence across steps
