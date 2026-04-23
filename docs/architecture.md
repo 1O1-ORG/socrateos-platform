@@ -2,123 +2,101 @@
 
 ## System Overview
 
-SocrateOS is a two-service application:
-
-1. **Engine** (Python/FastAPI) — the dialectic reasoning backend
-2. **UI** (Next.js/React) — the chat interface
-
-The engine uses SQLite for persistence and OpenRouter as a unified LLM gateway.
-No external databases, no GPU requirements, no heavyweight dependencies.
-
-## Request Flow
+SocrateOS Platform is a modular framework with four primary subsystems:
 
 ```
-User types a thought
-       │
-       ▼
-   [Next.js UI]
-       │ POST /api/dialectic/start
-       ▼
-   [FastAPI Engine]
-       │
-       ├─▶ [Input Classifier]
-       │     Cheap LLM call (gpt-4o-mini)
-       │     Returns: mode + language + harm_level
-       │
-       ├─▶ [Safety Layer]
-       │     If mode == "harmful": return refusal, skip LLM
-       │
-       ├─▶ [Prompt Builder]
-       │     Loads config from socrates.yaml
-       │     Constructs system prompt for current step
-       │     Injects: persona voice + state + conversation history
-       │
-       ├─▶ [LLM Call]
-       │     OpenRouter API (any model)
-       │     Parses response + strips epistemic trailer
-       │
-       ├─▶ [State Update]
-       │     SQLite: update session state, insert turn
-       │
-       └─▶ Response: { session_id, state, response, turns, step_label }
+┌─────────────────────────────────────────────────┐
+│                   Chat UI Layer                  │
+│         React Components · CSS Modules           │
+├─────────────────────────────────────────────────┤
+│                  Platform Engine                 │
+│  ┌─────────────┐  ┌──────────┐  ┌────────────┐ │
+│  │  Dialogue    │  │ Persona  │  │  Plugin    │ │
+│  │  Engine      │  │ Registry │  │  Pipeline  │ │
+│  └──────┬───────┘  └────┬─────┘  └─────┬──────┘ │
+│         │               │              │         │
+│  ┌──────▼───────────────▼──────────────▼──────┐ │
+│  │           Actor Identity Layer              │ │
+│  └──────────────────┬─────────────────────────┘ │
+├─────────────────────┼───────────────────────────┤
+│                     ▼                            │
+│              Storage Layer                       │
+│        PostgreSQL · pgvector · Migrations        │
+└─────────────────────────────────────────────────┘
 ```
 
-## Database Schema
+## Subsystems
 
-```sql
-dialectic_sessions
-├── id (TEXT PK)
-├── original_input
-├── input_mode
-├── loop_step (1-5)
-├── is_complete
-├── current_claim
-├── surfaced_assumptions (JSON array)
-├── active_tension
-├── persona_id
-├── created_at
-└── updated_at
+### Dialogue Engine
 
-dialectic_turns
-├── id (INTEGER PK)
-├── session_id (FK → sessions)
-├── step
-├── role (user | system)
-├── content
-├── model
-├── tokens_used
-├── cognitive_metadata (JSON)
-└── created_at
+The core state machine that drives structured conversations. Each dialogue follows a configurable sequence of steps, where each step has:
 
-personas
-├── id (TEXT PK)
-├── slug (UNIQUE)
-├── name
-├── description
-├── icon
-├── system_instruction
-├── cognitive_lens
-├── is_premium
-├── is_active
-└── created_at
+- **Name**: displayed in the UI stepper
+- **Instruction**: injected into the LLM system prompt
+- **Transition logic**: conditions for advancing to the next step
+
+The engine is step-count agnostic. Define 3 steps or 12. The state machine handles progression, history tracking, and session persistence.
+
+### Persona Registry
+
+Loads persona definitions from YAML files, validates them against the schema, and makes them available to the dialogue engine at runtime.
+
+Personas are hot-swappable: change the YAML file, restart the service, and the new persona is live. No code changes required.
+
+See [Persona Specification](persona-spec.md) for the full schema.
+
+### Plugin Pipeline
+
+Extension points at every stage of the dialogue lifecycle:
+
+- `pre_step`: runs before each dialogue step (input preprocessing)
+- `post_step`: runs after each dialogue step (output analysis)
+- `on_complete`: runs when a dialogue session finishes
+- `on_extract`: runs during any data extraction phase
+
+Plugins are Python classes that inherit from the base `Plugin` class and register for specific hooks.
+
+### Actor Identity
+
+Token-based and OAuth identity system. Each Actor (the person using the system) has:
+
+- A unique persistent token
+- Session history
+- Optional OAuth identity (Google, GitHub)
+- Memory context from prior sessions
+
+### Storage Layer
+
+PostgreSQL with pgvector extension for vector similarity operations. The schema is managed through idempotent migrations that run on startup.
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python 3.12, FastAPI |
+| Frontend | Next.js, React, TypeScript, CSS Modules |
+| Database | PostgreSQL 18 + pgvector |
+| LLM Gateway | OpenRouter (model-agnostic) |
+| Deployment | Docker Compose, Traefik |
+
+## API Convention
+
+All API responses follow the envelope format:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "error": null
+}
 ```
 
-## Epistemological Filter
+Error responses:
 
-Every LLM response includes a machine-readable trailer:
-
-```xml
-<cognitive_meta>
-{"classifications":[
-  {"text":"claim paraphrase","category":"FACT|INFERENCE|SPECULATION"}
-]}
-</cognitive_meta>
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Human-readable error description"
+}
 ```
-
-The engine strips this before returning the visible response to the user.
-The metadata is stored in `dialectic_turns.cognitive_metadata` for analysis.
-
-## Configuration
-
-All behavior is controlled by `engine/config/socrates.yaml`:
-
-- **identity** — who Socrates is
-- **behavior** — tone, style, principles, output format, epistemic rules
-- **constraints** — model, temperature, token limits
-- **routing** — classifier model and prompt
-- **modes** — per-classification prompt injections
-- **safety** — 3-level refusal messages
-- **dialectic** — system preamble, epistemological filter, 5 step instructions
-
-Change the YAML, restart the server. No code modifications needed.
-
-## Persona System
-
-Personas are cognitive lenses that modify Socrates' approach without
-changing the underlying 5-step protocol. Each persona provides:
-
-- `system_instruction` — injected into the system prompt as "Persona Voice"
-- `cognitive_lens` — a label describing the reasoning approach
-
-The persona voice is layered before step instructions, so the dialectic
-structure remains identical regardless of which persona is active.
